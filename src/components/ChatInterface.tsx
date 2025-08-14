@@ -1,0 +1,164 @@
+import { useState } from 'react';
+import { Send, Bot, User, AlertCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+
+interface Message {
+  id: string;
+  type: 'user' | 'ai';
+  content: string;
+  confidence?: number;
+}
+
+export const ChatInterface = () => {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [inputValue, setInputValue] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSend = async () => {
+    if (!inputValue.trim()) return;
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      type: 'user',
+      content: inputValue,
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    setInputValue('');
+    setIsLoading(true);
+
+    // Simulate AI response
+    setTimeout(() => {
+      const confidence = Math.floor(Math.random() * 40) + 60; // Random confidence 60-100%
+      const responses = [
+        "Based on the contract analysis, this clause appears to be standard for employment agreements in your industry. The 30-day notice period provides reasonable protection for both parties.",
+        "This non-compete clause is moderately restrictive. While 6 months is within typical ranges, it may limit your options in the same industry. Consider negotiating the scope or duration.",
+        "The compensation package seems competitive for the role level. The bi-weekly payment schedule is standard practice for most employers.",
+        "The confidentiality provisions are standard and reasonable. They protect the company's trade secrets while not overly restricting your future employment.",
+      ];
+
+      const aiMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        type: 'ai',
+        content: responses[Math.floor(Math.random() * responses.length)],
+        confidence,
+      };
+
+      setMessages(prev => [...prev, aiMessage]);
+      setIsLoading(false);
+    }, 2000);
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  };
+
+  return (
+    <Card className="card-elevated w-full max-w-4xl mx-auto">
+      <CardHeader>
+        <CardTitle className="flex items-center space-x-2 text-xl font-bold text-foreground">
+          <Bot className="h-6 w-6 text-primary" />
+          <span>AI Legal Assistant</span>
+        </CardTitle>
+        <p className="text-muted-foreground">
+          Ask questions about your uploaded document
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        {/* Messages */}
+        <div className="min-h-[300px] max-h-[500px] overflow-y-auto space-y-4 p-4 bg-muted/20 rounded-xl">
+          {messages.length === 0 ? (
+            <div className="text-center text-muted-foreground py-8">
+              <Bot className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
+              <p>Start a conversation by asking about your document</p>
+              <p className="text-sm mt-2">
+                Try: "What are the main risks in this contract?" or "Explain the termination clause"
+              </p>
+            </div>
+          ) : (
+            messages.map((message) => (
+              <div key={message.id} className={`flex items-start space-x-3 ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}>
+                {message.type === 'ai' && (
+                  <div className="flex-shrink-0 w-8 h-8 bg-gradient-primary rounded-full flex items-center justify-center">
+                    <Bot className="h-4 w-4 text-white" />
+                  </div>
+                )}
+                
+                <div className={`${message.type === 'user' ? 'chat-bubble-user' : 'chat-bubble-ai'}`}>
+                  <p className="text-sm leading-relaxed">{message.content}</p>
+                  
+                  {message.type === 'ai' && message.confidence && (
+                    <div className="mt-3 pt-3 border-t border-border/50">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-muted-foreground">
+                          Confidence: {message.confidence}%
+                        </span>
+                        {message.confidence < 70 && (
+                          <div className="flex items-center space-x-1 text-destructive">
+                            <AlertCircle className="h-3 w-3" />
+                            <span>Consult a lawyer</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="mt-1 w-full bg-muted rounded-full h-1.5">
+                        <div 
+                          className="bg-gradient-primary h-1.5 rounded-full transition-all duration-500"
+                          style={{ width: `${message.confidence}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {message.type === 'user' && (
+                  <div className="flex-shrink-0 w-8 h-8 bg-muted rounded-full flex items-center justify-center">
+                    <User className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+          
+          {isLoading && (
+            <div className="flex items-start space-x-3">
+              <div className="flex-shrink-0 w-8 h-8 bg-gradient-primary rounded-full flex items-center justify-center">
+                <Bot className="h-4 w-4 text-white" />
+              </div>
+              <div className="chat-bubble-ai">
+                <div className="flex space-x-1">
+                  <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                  <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                  <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Input */}
+        <div className="flex space-x-2">
+          <Input
+            value={inputValue}
+            onChange={(e) => setInputValue(e.target.value)}
+            onKeyPress={handleKeyPress}
+            placeholder="Ask about this document..."
+            className="flex-1"
+            disabled={isLoading}
+          />
+          <Button 
+            onClick={handleSend} 
+            disabled={!inputValue.trim() || isLoading}
+            className="btn-hero px-6"
+          >
+            <Send className="h-4 w-4" />
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
