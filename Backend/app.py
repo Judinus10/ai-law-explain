@@ -8,10 +8,6 @@ from qa_engine import answer_question
 app = Flask(__name__)
 CORS(app)  # Allow frontend (React) to call backend
 
-@app.route("/", methods=["GET"])
-def home():
-    return jsonify({"message": "AI Law Backend is running ✅"})
-
 @app.route("/upload", methods=["POST"])
 def upload_pdf():
     if 'file' not in request.files:
