@@ -75,7 +75,7 @@ kw_model = KeyBERT()
 EMAIL_HOST = "smtp.gmail.com"
 EMAIL_PORT = 587
 EMAIL_ADDRESS = "judinushu@gmail.com"
-EMAIL_PASSWORD = "tlcm hmuq lvhv fynw"  # ⚠️ Use Gmail App Password, not your real password
+EMAIL_PASSWORD = "tlcm hmuq lvhv fynw" 
 
 
 # ---------------------
