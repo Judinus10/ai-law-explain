@@ -12,97 +12,53 @@ interface Message {
   confidence?: number;
 }
 
-export const ChatInterface = () => {
+export const ChatInterface = ({ documentContext }: { documentContext: string }) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // const handleSend = async () => {
-  //   if (!inputValue.trim()) return;
-
-  //   const userMessage: Message = {
-  //     id: Date.now().toString(),
-  //     type: 'user',
-  //     content: inputValue,
-  //   };
-
-  //   setMessages(prev => [...prev, userMessage]);
-  //   setInputValue('');
-  //   setIsLoading(true);
-
-  //   try {
-  //     const response = await axios.post("http://127.0.0.1:5000/ask", {
-  //       question: inputValue,      // ✅ match Flask
-  //       context: messages.map(m => m.content).join(" "), // or pass the uploaded PDF text
-  //     });
-
-  //     const aiMessage: Message = {
-  //       id: (Date.now() + 1).toString(),
-  //       type: 'ai',
-  //       content: response.data.answer || 'No response from AI.',
-  //       confidence: response.data.confidence ?? 100,
-  //     };
-
-  //     setMessages(prev => [...prev, aiMessage]);
-  //   } catch (error) {
-  //     console.error('Chat error:', error);
-
-  //     const errorMessage: Message = {
-  //       id: (Date.now() + 1).toString(),
-  //       type: 'ai',
-  //       content: '⚠️ Unable to connect to the backend. Please try again.',
-  //       confidence: 0,
-  //     };
-
-  //     setMessages(prev => [...prev, errorMessage]);
-  //   } finally {
-  //     setIsLoading(false);
-  //   }
-  // };
-
   const handleSend = async () => {
-  if (!inputValue.trim()) return;
+    if (!inputValue.trim()) return;
 
-  const userMessage: Message = {
-    id: Date.now().toString(),
-    type: 'user',
-    content: inputValue,
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      type: 'user',
+      content: inputValue,
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    setInputValue('');
+    setIsLoading(true);
+
+    try {
+      const response = await axios.post("http://127.0.0.1:5000/ask", {
+        question: inputValue,
+        context: documentContext, // ✅ use uploaded PDF text, not chat history
+      });
+
+      const aiMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        type: 'ai',
+        content: response.data.answer || "No response from AI.",
+        confidence: response.data.confidence || 100,
+      };
+
+      setMessages(prev => [...prev, aiMessage]);
+    } catch (error) {
+      console.error("Chat error:", error);
+
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        type: 'ai',
+        content: "⚠️ Unable to connect to the backend. Please try again.",
+        confidence: 0,
+      };
+
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsLoading(false);
+    }
   };
-
-  setMessages(prev => [...prev, userMessage]);
-  setInputValue('');
-  setIsLoading(true);
-
-  try {
-    const response = await axios.post("http://127.0.0.1:5000/ask", {
-      question: inputValue,   // ✅ Flask expects this
-      context: messages.map(m => m.content).join(" "),  // ✅ provide context (your backend requires it)
-    });
-
-    const aiMessage: Message = {
-      id: (Date.now() + 1).toString(),
-      type: 'ai',
-      content: response.data.answer || "No response from AI.",
-      confidence: response.data.confidence || 100,
-    };
-
-    setMessages(prev => [...prev, aiMessage]);
-  } catch (error) {
-    console.error("Chat error:", error);
-
-    const errorMessage: Message = {
-      id: (Date.now() + 1).toString(),
-      type: 'ai',
-      content: "⚠️ Unable to connect to the backend. Please try again.",
-      confidence: 0,
-    };
-
-    setMessages(prev => [...prev, errorMessage]);
-  } finally {
-    setIsLoading(false);
-  }
-};
-
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {

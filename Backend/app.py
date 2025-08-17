@@ -140,7 +140,7 @@ def upload_pdf():
 
 
 @app.route("/ask", methods=["POST"])
-def ask_question():
+def ask():
     data = request.json
     question = data.get("question")
     context = data.get("context")
