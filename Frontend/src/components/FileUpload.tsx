@@ -26,7 +26,7 @@ export const FileUpload = ({ onFileUploaded }: FileUploadProps) => {
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-    
+
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       handleFile(e.dataTransfer.files[0]);
     }
@@ -43,33 +43,30 @@ export const FileUpload = ({ onFileUploaded }: FileUploadProps) => {
     }
 
     setIsUploading(true);
-    
-    // Simulate API call
+
     try {
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      // Mock analysis result
-      const mockAnalysis = {
-        summary: "This is a standard employment contract that establishes the terms and conditions of employment between Company ABC and John Doe. The agreement outlines compensation, benefits, work responsibilities, and termination procedures. Key highlights include a competitive salary package, comprehensive health benefits, and standard non-disclosure provisions.",
-        clauses: [
-          { type: "Compensation", text: "Annual salary of $75,000 paid bi-weekly", severity: "minor" },
-          { type: "Termination", text: "Either party may terminate with 30 days written notice", severity: "medium" },
-          { type: "Non-disclosure", text: "Employee agrees to maintain confidentiality of company information", severity: "minor" },
-          { type: "Non-compete", text: "6-month non-compete clause within same industry", severity: "major" }
-        ],
-        risks: [
-          { text: "Non-compete clause may limit future employment opportunities", severity: "major" },
-          { text: "Termination notice period is relatively standard", severity: "minor" },
-          { text: "No mention of overtime compensation policy", severity: "medium" }
-        ]
-      };
-      
-      onFileUploaded(mockAnalysis);
+      const formData = new FormData();
+      formData.append("file", file);
+
+      // Call Flask backend
+      const response = await fetch("http://127.0.0.1:5000/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to analyze document");
+      }
+
+      const analysis = await response.json();
+
+      onFileUploaded(analysis);  // ✅ send real result back to parent
       toast({
         title: "Document analyzed successfully!",
         description: "Your legal document has been processed.",
       });
     } catch (error) {
+      console.error(error);
       toast({
         title: "Analysis failed",
         description: "There was an error processing your document.",
@@ -80,6 +77,7 @@ export const FileUpload = ({ onFileUploaded }: FileUploadProps) => {
     }
   };
 
+
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       handleFile(e.target.files[0]);
@@ -88,7 +86,7 @@ export const FileUpload = ({ onFileUploaded }: FileUploadProps) => {
 
   return (
     <div className="w-full max-w-2xl mx-auto">
-      <div 
+      <div
         className={`upload-area ${dragActive ? 'border-primary bg-primary/5' : ''} ${isUploading ? 'pointer-events-none opacity-50' : ''}`}
         onDragEnter={handleDrag}
         onDragLeave={handleDrag}

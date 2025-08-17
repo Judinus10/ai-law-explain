@@ -3,6 +3,7 @@ import { Send, Bot, User, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import axios from 'axios';
 
 interface Message {
   id: string;
@@ -16,40 +17,92 @@ export const ChatInterface = () => {
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSend = async () => {
-    if (!inputValue.trim()) return;
+  // const handleSend = async () => {
+  //   if (!inputValue.trim()) return;
 
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      type: 'user',
-      content: inputValue,
+  //   const userMessage: Message = {
+  //     id: Date.now().toString(),
+  //     type: 'user',
+  //     content: inputValue,
+  //   };
+
+  //   setMessages(prev => [...prev, userMessage]);
+  //   setInputValue('');
+  //   setIsLoading(true);
+
+  //   try {
+  //     const response = await axios.post("http://127.0.0.1:5000/ask", {
+  //       question: inputValue,      // ✅ match Flask
+  //       context: messages.map(m => m.content).join(" "), // or pass the uploaded PDF text
+  //     });
+
+  //     const aiMessage: Message = {
+  //       id: (Date.now() + 1).toString(),
+  //       type: 'ai',
+  //       content: response.data.answer || 'No response from AI.',
+  //       confidence: response.data.confidence ?? 100,
+  //     };
+
+  //     setMessages(prev => [...prev, aiMessage]);
+  //   } catch (error) {
+  //     console.error('Chat error:', error);
+
+  //     const errorMessage: Message = {
+  //       id: (Date.now() + 1).toString(),
+  //       type: 'ai',
+  //       content: '⚠️ Unable to connect to the backend. Please try again.',
+  //       confidence: 0,
+  //     };
+
+  //     setMessages(prev => [...prev, errorMessage]);
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // };
+
+  const handleSend = async () => {
+  if (!inputValue.trim()) return;
+
+  const userMessage: Message = {
+    id: Date.now().toString(),
+    type: 'user',
+    content: inputValue,
+  };
+
+  setMessages(prev => [...prev, userMessage]);
+  setInputValue('');
+  setIsLoading(true);
+
+  try {
+    const response = await axios.post("http://127.0.0.1:5000/ask", {
+      question: inputValue,   // ✅ Flask expects this
+      context: messages.map(m => m.content).join(" "),  // ✅ provide context (your backend requires it)
+    });
+
+    const aiMessage: Message = {
+      id: (Date.now() + 1).toString(),
+      type: 'ai',
+      content: response.data.answer || "No response from AI.",
+      confidence: response.data.confidence || 100,
     };
 
-    setMessages(prev => [...prev, userMessage]);
-    setInputValue('');
-    setIsLoading(true);
+    setMessages(prev => [...prev, aiMessage]);
+  } catch (error) {
+    console.error("Chat error:", error);
 
-    // Simulate AI response
-    setTimeout(() => {
-      const confidence = Math.floor(Math.random() * 40) + 60; // Random confidence 60-100%
-      const responses = [
-        "Based on the contract analysis, this clause appears to be standard for employment agreements in your industry. The 30-day notice period provides reasonable protection for both parties.",
-        "This non-compete clause is moderately restrictive. While 6 months is within typical ranges, it may limit your options in the same industry. Consider negotiating the scope or duration.",
-        "The compensation package seems competitive for the role level. The bi-weekly payment schedule is standard practice for most employers.",
-        "The confidentiality provisions are standard and reasonable. They protect the company's trade secrets while not overly restricting your future employment.",
-      ];
+    const errorMessage: Message = {
+      id: (Date.now() + 1).toString(),
+      type: 'ai',
+      content: "⚠️ Unable to connect to the backend. Please try again.",
+      confidence: 0,
+    };
 
-      const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        type: 'ai',
-        content: responses[Math.floor(Math.random() * responses.length)],
-        confidence,
-      };
+    setMessages(prev => [...prev, errorMessage]);
+  } finally {
+    setIsLoading(false);
+  }
+};
 
-      setMessages(prev => [...prev, aiMessage]);
-      setIsLoading(false);
-    }, 2000);
-  };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -69,6 +122,7 @@ export const ChatInterface = () => {
           Ask questions about your uploaded document
         </p>
       </CardHeader>
+
       <CardContent className="space-y-4">
         {/* Messages */}
         <div className="min-h-[300px] max-h-[500px] overflow-y-auto space-y-4 p-4 bg-muted/20 rounded-xl">
@@ -82,17 +136,24 @@ export const ChatInterface = () => {
             </div>
           ) : (
             messages.map((message) => (
-              <div key={message.id} className={`flex items-start space-x-3 ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}>
+              <div
+                key={message.id}
+                className={`flex items-start space-x-3 ${message.type === 'user' ? 'justify-end' : 'justify-start'
+                  }`}
+              >
                 {message.type === 'ai' && (
                   <div className="flex-shrink-0 w-8 h-8 bg-gradient-primary rounded-full flex items-center justify-center">
                     <Bot className="h-4 w-4 text-white" />
                   </div>
                 )}
-                
-                <div className={`${message.type === 'user' ? 'chat-bubble-user' : 'chat-bubble-ai'}`}>
+
+                <div
+                  className={`${message.type === 'user' ? 'chat-bubble-user' : 'chat-bubble-ai'
+                    }`}
+                >
                   <p className="text-sm leading-relaxed">{message.content}</p>
-                  
-                  {message.type === 'ai' && message.confidence && (
+
+                  {message.type === 'ai' && message.confidence !== undefined && (
                     <div className="mt-3 pt-3 border-t border-border/50">
                       <div className="flex items-center justify-between text-xs">
                         <span className="text-muted-foreground">
@@ -106,7 +167,7 @@ export const ChatInterface = () => {
                         )}
                       </div>
                       <div className="mt-1 w-full bg-muted rounded-full h-1.5">
-                        <div 
+                        <div
                           className="bg-gradient-primary h-1.5 rounded-full transition-all duration-500"
                           style={{ width: `${message.confidence}%` }}
                         />
@@ -123,7 +184,7 @@ export const ChatInterface = () => {
               </div>
             ))
           )}
-          
+
           {isLoading && (
             <div className="flex items-start space-x-3">
               <div className="flex-shrink-0 w-8 h-8 bg-gradient-primary rounded-full flex items-center justify-center">
@@ -131,9 +192,18 @@ export const ChatInterface = () => {
               </div>
               <div className="chat-bubble-ai">
                 <div className="flex space-x-1">
-                  <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                  <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                  <div className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                  <div
+                    className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce"
+                    style={{ animationDelay: '0ms' }}
+                  />
+                  <div
+                    className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce"
+                    style={{ animationDelay: '150ms' }}
+                  />
+                  <div
+                    className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce"
+                    style={{ animationDelay: '300ms' }}
+                  />
                 </div>
               </div>
             </div>
@@ -150,8 +220,8 @@ export const ChatInterface = () => {
             className="flex-1"
             disabled={isLoading}
           />
-          <Button 
-            onClick={handleSend} 
+          <Button
+            onClick={handleSend}
             disabled={!inputValue.trim() || isLoading}
             className="btn-hero px-6"
           >
