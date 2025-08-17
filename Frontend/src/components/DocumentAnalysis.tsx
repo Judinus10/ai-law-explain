@@ -60,7 +60,7 @@ ${analysis.risks.map(risk => `- ${risk.text} (${risk.severity})`).join('\n')}
 
 Disclaimer: This AI tool is for informational purposes only and does not provide legal advice.
     `;
-    
+
     const blob = new Blob([content], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -68,14 +68,14 @@ Disclaimer: This AI tool is for informational purposes only and does not provide
     a.download = 'legal-document-analysis.txt';
     a.click();
     URL.revokeObjectURL(url);
-    
+
     toast({
       title: "Download started",
       description: "Your analysis has been downloaded as a text file.",
     });
   };
 
-  const handleEmailSend = () => {
+  const handleEmailSend = async () => {
     if (!email) {
       toast({
         title: "Email required",
@@ -84,14 +84,43 @@ Disclaimer: This AI tool is for informational purposes only and does not provide
       });
       return;
     }
-    
-    // Simulate email sending
-    toast({
-      title: "Email sent!",
-      description: `Analysis has been sent to ${email}`,
-    });
-    setEmail('');
+
+    try {
+      const response = await fetch("http://localhost:5000/send-summary", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          summary: analysis.summary,  // send the summary from props
+          email: email,              // send the user’s email
+        }),
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        toast({
+          title: "Email sent!",
+          description: `Analysis has been sent to ${email}`,
+        });
+        setEmail('');
+      } else {
+        toast({
+          title: "Error",
+          description: result.error || "Failed to send email.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Server error",
+        description: "Could not connect to backend.",
+        variant: "destructive",
+      });
+    }
   };
+
 
   return (
     <div className="w-full max-w-4xl mx-auto space-y-6 fade-in">
@@ -189,7 +218,7 @@ Disclaimer: This AI tool is for informational purposes only and does not provide
               <Download className="h-4 w-4 mr-2" />
               Download Summary
             </Button>
-            
+
             <div className="flex flex-1 gap-2 w-full sm:w-auto">
               <Input
                 type="email"
