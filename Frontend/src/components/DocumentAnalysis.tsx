@@ -8,6 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 
 interface DocumentAnalysisProps {
   analysis: {
+    document_name?: string; // added to pass to backend
     summary: string;
     clauses: Array<{
       type: string;
@@ -44,37 +45,33 @@ export const DocumentAnalysis = ({ analysis }: DocumentAnalysisProps) => {
     }
   };
 
+  // -----------------------------
+  // Download TXT (summary + risks)
+  // -----------------------------
   const handleDownload = () => {
-    const content = `
-AI Legal Document Analysis
-=========================
+    const content = `Summary for ${analysis.document_name || "Legal Document"}\n\n` +
+                    `=== Summary ===\n` +
+                    analysis.summary + "\n\n" +
+                    `=== Risks ===\n` +
+                    analysis.risks.map(r => `- ${r.text} (Severity: ${r.severity})`).join("\n");
 
-SUMMARY:
-${analysis.summary}
-
-KEY CLAUSES:
-${analysis.clauses.map(clause => `- ${clause.type}: ${clause.text} (${clause.severity})`).join('\n')}
-
-RISKS & RED FLAGS:
-${analysis.risks.map(risk => `- ${risk.text} (${risk.severity})`).join('\n')}
-
-Disclaimer: This AI tool is for informational purposes only and does not provide legal advice.
-    `;
-
-    const blob = new Blob([content], { type: 'text/plain' });
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'legal-document-analysis.txt';
+    a.download = `${analysis.document_name || "Legal Document"}-Summary.txt`;
     a.click();
     URL.revokeObjectURL(url);
 
     toast({
       title: "Download started",
-      description: "Your analysis has been downloaded as a text file.",
+      description: "Your TXT summary is being downloaded.",
     });
   };
 
+  // -----------------------------
+  // Send PDF via Email
+  // -----------------------------
   const handleEmailSend = async () => {
     if (!email) {
       toast({
@@ -88,12 +85,13 @@ Disclaimer: This AI tool is for informational purposes only and does not provide
     try {
       const response = await fetch("http://localhost:5000/send-summary", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          summary: analysis.summary,  // send the summary from props
-          email: email,              // send the user’s email
+          summary: analysis.summary,
+          risks: analysis.risks, // send risks as well
+          email: email,
+          document_name: analysis.document_name || "Legal Document",
+          send_email: true // flag backend to send email
         }),
       });
 
@@ -121,7 +119,9 @@ Disclaimer: This AI tool is for informational purposes only and does not provide
     }
   };
 
-
+  // -----------------------------
+  // Render
+  // -----------------------------
   return (
     <div className="w-full max-w-4xl mx-auto space-y-6 fade-in">
       {/* Summary Section */}
@@ -132,11 +132,7 @@ Disclaimer: This AI tool is for informational purposes only and does not provide
             <Collapsible open={summaryExpanded} onOpenChange={setSummaryExpanded}>
               <CollapsibleTrigger asChild>
                 <Button variant="ghost" size="sm">
-                  {summaryExpanded ? (
-                    <ChevronUp className="h-4 w-4" />
-                  ) : (
-                    <ChevronDown className="h-4 w-4" />
-                  )}
+                  {summaryExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                 </Button>
               </CollapsibleTrigger>
             </Collapsible>
@@ -146,18 +142,14 @@ Disclaimer: This AI tool is for informational purposes only and does not provide
           <Collapsible open={summaryExpanded} onOpenChange={setSummaryExpanded}>
             <div className="text-muted-foreground leading-relaxed">
               {summaryExpanded ? (
-                <CollapsibleContent className="space-y-2">
-                  {analysis.summary}
-                </CollapsibleContent>
+                <CollapsibleContent className="space-y-2">{analysis.summary}</CollapsibleContent>
               ) : (
                 <p>{analysis.summary.substring(0, 200)}...</p>
               )}
             </div>
             {!summaryExpanded && (
               <CollapsibleTrigger asChild>
-                <Button variant="link" className="p-0 h-auto mt-2 text-primary">
-                  Read More
-                </Button>
+                <Button variant="link" className="p-0 h-auto mt-2 text-primary">Read More</Button>
               </CollapsibleTrigger>
             )}
           </Collapsible>
@@ -176,9 +168,7 @@ Disclaimer: This AI tool is for informational purposes only and does not provide
                 <span className={`px-3 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary`}>
                   {clause.type}
                 </span>
-                <div className="flex-1">
-                  <p className="text-foreground">{clause.text}</p>
-                </div>
+                <div className="flex-1"><p className="text-foreground">{clause.text}</p></div>
                 <span className={getRiskClass(clause.severity)}>
                   {getRiskIcon(clause.severity)} {clause.severity}
                 </span>
@@ -200,9 +190,7 @@ Disclaimer: This AI tool is for informational purposes only and does not provide
           <div className="space-y-3">
             {analysis.risks.map((risk, index) => (
               <div key={index} className="flex items-start space-x-3 p-4 bg-muted/30 rounded-xl">
-                <span className={getRiskClass(risk.severity)}>
-                  {getRiskIcon(risk.severity)} {risk.severity}
-                </span>
+                <span className={getRiskClass(risk.severity)}>{getRiskIcon(risk.severity)} {risk.severity}</span>
                 <p className="text-foreground flex-1">{risk.text}</p>
               </div>
             ))}
@@ -214,11 +202,13 @@ Disclaimer: This AI tool is for informational purposes only and does not provide
       <Card className="card-elevated">
         <CardContent className="pt-6">
           <div className="flex flex-col sm:flex-row gap-4 items-center">
+            {/* TXT Download Button */}
             <Button onClick={handleDownload} variant="outline" className="flex-1 sm:flex-none">
               <Download className="h-4 w-4 mr-2" />
-              Download Summary
+              Download TXT
             </Button>
 
+            {/* Email Input & Send */}
             <div className="flex flex-1 gap-2 w-full sm:w-auto">
               <Input
                 type="email"
@@ -229,7 +219,7 @@ Disclaimer: This AI tool is for informational purposes only and does not provide
               />
               <Button onClick={handleEmailSend} className="btn-hero">
                 <Mail className="h-4 w-4 mr-2" />
-                Send
+                Send Email
               </Button>
             </div>
           </div>

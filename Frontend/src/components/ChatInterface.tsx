@@ -12,13 +12,31 @@ interface Message {
   confidence?: number;
 }
 
-export const ChatInterface = ({ documentContext }: { documentContext: string }) => {
+interface Props {
+  documentContext?: string; // made optional
+}
+
+export const ChatInterface = ({ documentContext }: Props) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSend = async () => {
     if (!inputValue.trim()) return;
+
+    if (!documentContext) {
+      // No document uploaded yet
+      setMessages(prev => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          type: 'ai',
+          content: "⚠️ Please upload a document before asking questions.",
+          confidence: 0,
+        },
+      ]);
+      return;
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -32,29 +50,29 @@ export const ChatInterface = ({ documentContext }: { documentContext: string }) 
 
     try {
       const response = await axios.post("http://127.0.0.1:5000/ask", {
-        question: inputValue,
-        context: documentContext, // ✅ use uploaded PDF text, not chat history
+        question: inputValue.trim(),
+        context: documentContext.trim(),
       });
 
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
         type: 'ai',
         content: response.data.answer || "No response from AI.",
-        confidence: response.data.confidence || 100,
+        confidence: response.data.confidence ?? 100,
       };
 
       setMessages(prev => [...prev, aiMessage]);
     } catch (error) {
       console.error("Chat error:", error);
-
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        type: 'ai',
-        content: "⚠️ Unable to connect to the backend. Please try again.",
-        confidence: 0,
-      };
-
-      setMessages(prev => [...prev, errorMessage]);
+      setMessages(prev => [
+        ...prev,
+        {
+          id: (Date.now() + 1).toString(),
+          type: 'ai',
+          content: "⚠️ Unable to connect to the backend. Please try again.",
+          confidence: 0,
+        },
+      ]);
     } finally {
       setIsLoading(false);
     }
@@ -85,17 +103,18 @@ export const ChatInterface = ({ documentContext }: { documentContext: string }) 
           {messages.length === 0 ? (
             <div className="text-center text-muted-foreground py-8">
               <Bot className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
-              <p>Start a conversation by asking about your document</p>
-              <p className="text-sm mt-2">
-                Try: "What are the main risks in this contract?" or "Explain the termination clause"
-              </p>
+              <p>{documentContext ? "Start a conversation by asking about your document" : "Upload a PDF document to start chatting."}</p>
+              {documentContext && (
+                <p className="text-sm mt-2">
+                  Try: "What are the main risks in this contract?" or "Explain the termination clause"
+                </p>
+              )}
             </div>
           ) : (
             messages.map((message) => (
               <div
                 key={message.id}
-                className={`flex items-start space-x-3 ${message.type === 'user' ? 'justify-end' : 'justify-start'
-                  }`}
+                className={`flex items-start space-x-3 ${message.type === 'user' ? 'justify-end' : 'justify-start'}`}
               >
                 {message.type === 'ai' && (
                   <div className="flex-shrink-0 w-8 h-8 bg-gradient-primary rounded-full flex items-center justify-center">
@@ -103,10 +122,7 @@ export const ChatInterface = ({ documentContext }: { documentContext: string }) 
                   </div>
                 )}
 
-                <div
-                  className={`${message.type === 'user' ? 'chat-bubble-user' : 'chat-bubble-ai'
-                    }`}
-                >
+                <div className={`${message.type === 'user' ? 'chat-bubble-user' : 'chat-bubble-ai'}`}>
                   <p className="text-sm leading-relaxed">{message.content}</p>
 
                   {message.type === 'ai' && message.confidence !== undefined && (
@@ -174,11 +190,11 @@ export const ChatInterface = ({ documentContext }: { documentContext: string }) 
             onKeyPress={handleKeyPress}
             placeholder="Ask about this document..."
             className="flex-1"
-            disabled={isLoading}
+            disabled={isLoading || !documentContext} // disable input if no document
           />
           <Button
             onClick={handleSend}
-            disabled={!inputValue.trim() || isLoading}
+            disabled={!inputValue.trim() || isLoading || !documentContext} // disable send if no document
             className="btn-hero px-6"
           >
             <Send className="h-4 w-4" />

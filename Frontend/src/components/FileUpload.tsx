@@ -2,14 +2,16 @@ import { useState, useCallback } from 'react';
 import { Upload, FileText, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { ChatInterface } from './ChatInterface'; // import your chat component
 
 interface FileUploadProps {
-  onFileUploaded: (analysis: any) => void;
+  onFileUploaded?: (analysis: any) => void; // optional, in case parent wants it
 }
 
 export const FileUpload = ({ onFileUploaded }: FileUploadProps) => {
   const [isUploading, setIsUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
+  const [analysis, setAnalysis] = useState<any>(null); // store upload result
   const { toast } = useToast();
 
   const handleDrag = useCallback((e: React.DragEvent) => {
@@ -48,7 +50,6 @@ export const FileUpload = ({ onFileUploaded }: FileUploadProps) => {
       const formData = new FormData();
       formData.append("file", file);
 
-      // Call Flask backend
       const response = await fetch("http://127.0.0.1:5000/upload", {
         method: "POST",
         body: formData,
@@ -58,9 +59,10 @@ export const FileUpload = ({ onFileUploaded }: FileUploadProps) => {
         throw new Error("Failed to analyze document");
       }
 
-      const analysis = await response.json();
+      const result = await response.json();
+      setAnalysis(result); // save analysis for chat
+      onFileUploaded?.(result); // optional callback to parent
 
-      onFileUploaded(analysis);  // ✅ send real result back to parent
       toast({
         title: "Document analyzed successfully!",
         description: "Your legal document has been processed.",
@@ -77,7 +79,6 @@ export const FileUpload = ({ onFileUploaded }: FileUploadProps) => {
     }
   };
 
-
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       handleFile(e.target.files[0]);
@@ -85,7 +86,7 @@ export const FileUpload = ({ onFileUploaded }: FileUploadProps) => {
   };
 
   return (
-    <div className="w-full max-w-2xl mx-auto">
+    <div className="w-full max-w-2xl mx-auto space-y-6">
       <div
         className={`upload-area ${dragActive ? 'border-primary bg-primary/5' : ''} ${isUploading ? 'pointer-events-none opacity-50' : ''}`}
         onDragEnter={handleDrag}
@@ -133,6 +134,9 @@ export const FileUpload = ({ onFileUploaded }: FileUploadProps) => {
           </div>
         )}
       </div>
+
+      {/* Render ChatInterface only after analysis is ready */}
+      {analysis && <ChatInterface documentContext={analysis.context} />}
     </div>
   );
 };
